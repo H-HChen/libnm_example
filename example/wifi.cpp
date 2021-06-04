@@ -163,33 +163,29 @@ void modify_connection_cb (GObject *     connection,
 void modify_wifi2(NMClient *client, GMainLoop *loop)
 {
     NMRemoteConnection *rem_con = NULL;
-    NMConnection *connection = NULL;
     gboolean temporary = FALSE;
     NMSettingWirelessSecurity * s_secure;
+    NMConnection *new_connection;
 
-    s_secure = (NMSettingWirelessSecurity *) nm_setting_wireless_security_new();
-    const char *   uuid;
-    const char *   password;
-    const char *   ssid_char;
-    ssid_char = "RMTtest";
     rem_con = nm_client_get_connection_by_id(client, "RMTClient");
-    nm_connection_remove_setting(NM_CONNECTION (rem_con), NM_TYPE_SETTING_WIRELESS_SECURITY);
+    new_connection = nm_simple_connection_new_clone(NM_CONNECTION(rem_con));
+    nm_connection_remove_setting(new_connection, NM_TYPE_SETTING_WIRELESS_SECURITY);
     s_secure = (NMSettingWirelessSecurity *) nm_setting_wireless_security_new();
-    g_object_set(G_OBJECT(s_secure),
+    g_object_set(s_secure,
                  NM_SETTING_WIRELESS_SECURITY_KEY_MGMT,
                  "wpa-psk",
                  NM_SETTING_WIRELESS_SECURITY_PSK,
-                 "adlinktest",
+                 "adlinkros",
                  NULL);
-    nm_connection_add_setting(NM_CONNECTION (rem_con), NM_SETTING(s_secure));
-    GString* ssid = g_string_new(ssid_char);
-    uuid = nm_setting_connection_get_uuid(nm_connection_get_setting_connection(NM_CONNECTION (rem_con)));
-    password = "adlinktest";
+    nm_connection_add_setting(new_connection, NM_SETTING(s_secure));
+    nm_connection_replace_settings_from_connection (NM_CONNECTION (rem_con),
+                                                    new_connection);
     nm_remote_connection_commit_changes_async(rem_con,
                                               !temporary,
                                               NULL,
                                               modify_connection_cb,
                                               loop);
+    g_object_unref(new_connection);
 }
 
 void modify_wifi(NMClient *client, GMainLoop *loop)
@@ -201,7 +197,6 @@ void modify_wifi(NMClient *client, GMainLoop *loop)
     const char *   password;
 
     rem_con = nm_client_get_connection_by_id(client, "RMTClient");
-    connection = nm_simple_connection_new();
     GString* ssid = g_string_new("RMTtest");
     uuid = nm_setting_connection_get_uuid(nm_connection_get_setting_connection(NM_CONNECTION (rem_con)));
     password = "adlinktest";
@@ -299,7 +294,7 @@ void get_password(NMClient *client)
 
     g_main_loop_unref(data.loop);
 
-    s_secure = (NMSettingWirelessSecurity *) nm_connection_get_setting_wireless_security(new_connection);
+    s_secure = nm_connection_get_setting_wireless_security(new_connection);
     password = nm_setting_wireless_security_get_psk(s_secure);
     g_print("%s", password);
 }
@@ -326,6 +321,66 @@ void get_active(NMClient *client)
     g_print("%s", ssid);
 }
 
+void update_ip4(NMClient *client, GMainLoop *loop, const char* method, bool gateway)
+{
+    NMRemoteConnection *rem_con = NULL;
+    gboolean temporary = FALSE;
+    NMSettingIPConfig * s_ip4;
+    NMConnection *new_connection;
+    NMIPAddress *ip_address;
+
+    rem_con = nm_client_get_connection_by_id(client, "RMTClient");
+    new_connection = nm_simple_connection_new_clone(NM_CONNECTION(rem_con));
+    s_ip4 = (NMSettingIPConfig *) nm_setting_ip4_config_new();
+
+    nm_connection_remove_setting(new_connection, NM_TYPE_SETTING_IP4_CONFIG);
+
+    if (!strcmp(method, "auto")) {
+        g_object_set(s_ip4,
+                     NM_SETTING_IP_CONFIG_METHOD,
+                     NM_SETTING_IP4_CONFIG_METHOD_AUTO,
+                     NULL);
+    } else if (!strcmp(method, "manual")) {
+        ip_address = nm_ip_address_new(AF_INET, "192.168.50.26", 24, NULL);
+        g_object_set(s_ip4,
+                     NM_SETTING_IP_CONFIG_METHOD,
+                     NM_SETTING_IP4_CONFIG_METHOD_MANUAL,
+                     NULL);
+
+        if (gateway) {
+            g_object_set(s_ip4,
+                         NM_SETTING_IP_CONFIG_GATEWAY,
+                         "192.168.50.1",
+                         NULL);
+        }
+        nm_setting_ip_config_add_address(s_ip4, ip_address);
+        nm_ip_address_unref(ip_address);
+    } else {
+        g_print("IP setting method not found");
+        g_main_loop_quit((GMainLoop*)loop);
+
+        return;
+    }
+
+    nm_connection_add_setting(new_connection, NM_SETTING(s_ip4));
+
+    if (!nm_connection_verify(new_connection, NULL)) {
+        printf("Error: invalid property of connection, abort action.\n");
+        g_main_loop_quit(loop);
+
+        return;
+    }
+
+    nm_connection_replace_settings_from_connection (NM_CONNECTION (rem_con),
+                                                    new_connection);
+    nm_remote_connection_commit_changes_async(rem_con,
+                                              !temporary,
+                                              NULL,
+                                              modify_connection_cb,
+                                              loop);
+    g_object_unref(new_connection);
+}
+
 int main(int argc, char *argv[])
 {
     NMClient * client;
@@ -341,11 +396,10 @@ int main(int argc, char *argv[])
         g_error_free(error);
         return 1;
     }
-
-    //add_wifi(client, loop, "RMTClient");
-    //modify_wifi3(client, loop);
+    //add_wifi(client, loop);
+    update_ip4(client, loop, "manual", true);
     //get_active(client);
-    get_password(client);
+    //get_password(client);
     // Wait for the connection to be added
     g_main_loop_run(loop);
 
