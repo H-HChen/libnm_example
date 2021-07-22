@@ -4,19 +4,22 @@
 #include <stdio.h>
 #include <string.h>
 #include <iostream>
+#include <array>
+#include <memory>
+#include <vector>
 
-NMConnection *  get_client_nmconnection(const char* connection_id, const char* uuid, GString* ssid, const char * password)
+NMConnection *get_client_nmconnection(const char *connection_id, const char *uuid, GString *ssid, const char *password)
 {
     NMConnection *connection = NULL;
     NMSettingConnection *s_con;
-    NMSettingWireless *     s_wireless;
-    NMSettingIP4Config * s_ip4;
-    NMSettingWirelessSecurity * s_secure;
+    NMSettingWireless *s_wireless;
+    NMSettingIP4Config *s_ip4;
+    NMSettingWirelessSecurity *s_secure;
 
     connection = nm_simple_connection_new();
-    s_wireless = (NMSettingWireless *) nm_setting_wireless_new();
-    s_secure = (NMSettingWirelessSecurity *) nm_setting_wireless_security_new();
-    s_con = (NMSettingConnection *) nm_setting_connection_new();
+    s_wireless = (NMSettingWireless *)nm_setting_wireless_new();
+    s_secure = (NMSettingWirelessSecurity *)nm_setting_wireless_security_new();
+    s_con = (NMSettingConnection *)nm_setting_connection_new();
 
     g_object_set(G_OBJECT(s_con),
                  NM_SETTING_CONNECTION_UUID,
@@ -28,7 +31,7 @@ NMConnection *  get_client_nmconnection(const char* connection_id, const char* u
                  NULL);
     nm_connection_add_setting(connection, NM_SETTING(s_con));
 
-    s_wireless = (NMSettingWireless *) nm_setting_wireless_new();
+    s_wireless = (NMSettingWireless *)nm_setting_wireless_new();
 
     g_object_set(G_OBJECT(s_wireless),
                  NM_SETTING_WIRELESS_SSID,
@@ -36,7 +39,7 @@ NMConnection *  get_client_nmconnection(const char* connection_id, const char* u
                  NULL);
     nm_connection_add_setting(connection, NM_SETTING(s_wireless));
 
-    s_secure = (NMSettingWirelessSecurity *) nm_setting_wireless_security_new();
+    s_secure = (NMSettingWirelessSecurity *)nm_setting_wireless_security_new();
     g_object_set(G_OBJECT(s_secure),
                  NM_SETTING_WIRELESS_SECURITY_KEY_MGMT,
                  "wpa-psk",
@@ -45,7 +48,7 @@ NMConnection *  get_client_nmconnection(const char* connection_id, const char* u
                  NULL);
     nm_connection_add_setting(connection, NM_SETTING(s_secure));
 
-    s_ip4 = (NMSettingIP4Config *) nm_setting_ip4_config_new();
+    s_ip4 = (NMSettingIP4Config *)nm_setting_ip4_config_new();
     g_object_set(G_OBJECT(s_ip4),
                  NM_SETTING_IP_CONFIG_METHOD,
                  NM_SETTING_IP4_CONFIG_METHOD_AUTO,
@@ -58,7 +61,7 @@ NMConnection *  get_client_nmconnection(const char* connection_id, const char* u
 void added_cb(GObject *client, GAsyncResult *result, gpointer user_data)
 {
     NMRemoteConnection *remote;
-    GError *            error = NULL;
+    GError *error = NULL;
 
     /* NM responded to our request; either handle the resulting error or
      * print out the object path of the connection we just added.
@@ -74,22 +77,22 @@ void added_cb(GObject *client, GAsyncResult *result, gpointer user_data)
     }
 
     /* Tell the mainloop we're done and we can quit now */
-    g_main_loop_quit((GMainLoop*)user_data);
+    g_main_loop_quit((GMainLoop *)user_data);
 }
 
 void add_connection(NMClient *client, GMainLoop *loop, const char *con_name)
 {
-    NMConnection *       connection;
+    NMConnection *connection;
     NMSettingConnection *s_con;
-    NMSettingWired *     s_wired;
-    NMSettingIP4Config * s_ip4;
-    char *               uuid;
+    NMSettingWired *s_wired;
+    NMSettingIP4Config *s_ip4;
+    char *uuid;
 
     /* Create a new connection object */
     connection = nm_simple_connection_new();
 
     /* Build up the 'connection' Setting */
-    s_con = (NMSettingConnection *) nm_setting_connection_new();
+    s_con = (NMSettingConnection *)nm_setting_connection_new();
     uuid = nm_utils_uuid_generate();
     g_object_set(G_OBJECT(s_con),
                  NM_SETTING_CONNECTION_UUID,
@@ -103,11 +106,11 @@ void add_connection(NMClient *client, GMainLoop *loop, const char *con_name)
     nm_connection_add_setting(connection, NM_SETTING(s_con));
 
     /* Build up the 'wired' Setting */
-    s_wired = (NMSettingWired *) nm_setting_wired_new();
+    s_wired = (NMSettingWired *)nm_setting_wired_new();
     nm_connection_add_setting(connection, NM_SETTING(s_wired));
 
     /* Build up the 'ipv4' Setting */
-    s_ip4 = (NMSettingIP4Config *) nm_setting_ip4_config_new();
+    s_ip4 = (NMSettingIP4Config *)nm_setting_ip4_config_new();
     g_object_set(G_OBJECT(s_ip4),
                  NM_SETTING_IP_CONFIG_METHOD,
                  NM_SETTING_IP4_CONFIG_METHOD_AUTO,
@@ -123,14 +126,14 @@ void add_connection(NMClient *client, GMainLoop *loop, const char *con_name)
 
 void add_wifi(NMClient *client, GMainLoop *loop, const char *con_name)
 {
-    NMConnection *       connection;
+    NMConnection *connection;
 
-    const char *   uuid;
-    const char *   password;
+    const char *uuid;
+    const char *password;
 
     /* Create a new connection object */
     uuid = nm_utils_uuid_generate();
-    GString* ssid = g_string_new("RMTserver");
+    GString *ssid = g_string_new("RMTserver");
     password = "adlinkros";
     connection = get_client_nmconnection("RMTClient", uuid, ssid, password);
 
@@ -141,36 +144,36 @@ void add_wifi(NMClient *client, GMainLoop *loop, const char *con_name)
     g_object_unref(connection);
 }
 
-void modify_connection_cb (GObject *     connection,
-                           GAsyncResult *result,
-                           gpointer      user_data)
+void modify_connection_cb(GObject *     connection,
+                          GAsyncResult *result,
+                          gpointer      user_data)
 {
     GError *error = NULL;
 
-    if (!nm_remote_connection_commit_changes_finish (NM_REMOTE_CONNECTION (connection),
-                                                     result, &error)) {
+    if (!nm_remote_connection_commit_changes_finish(NM_REMOTE_CONNECTION(connection),
+                                                    result, &error)) {
         printf(("Error: Failed to modify connection '%s': %s"),
-               nm_connection_get_id (NM_CONNECTION (connection)),
+               nm_connection_get_id(NM_CONNECTION(connection)),
                error->message);
     } else {
         printf(("Connection '%s' (%s) successfully modified.\n"),
-               nm_connection_get_id (NM_CONNECTION (connection)),
-               nm_connection_get_uuid (NM_CONNECTION (connection)));
+               nm_connection_get_id(NM_CONNECTION(connection)),
+               nm_connection_get_uuid(NM_CONNECTION(connection)));
     }
-    g_main_loop_quit((GMainLoop*)user_data);
+    g_main_loop_quit((GMainLoop *)user_data);
 }
 
 void modify_wifi2(NMClient *client, GMainLoop *loop)
 {
     NMRemoteConnection *rem_con = NULL;
     gboolean temporary = FALSE;
-    NMSettingWirelessSecurity * s_secure;
+    NMSettingWirelessSecurity *s_secure;
     NMConnection *new_connection;
 
     rem_con = nm_client_get_connection_by_id(client, "RMTClient");
     new_connection = nm_simple_connection_new_clone(NM_CONNECTION(rem_con));
     nm_connection_remove_setting(new_connection, NM_TYPE_SETTING_WIRELESS_SECURITY);
-    s_secure = (NMSettingWirelessSecurity *) nm_setting_wireless_security_new();
+    s_secure = (NMSettingWirelessSecurity *)nm_setting_wireless_security_new();
     g_object_set(s_secure,
                  NM_SETTING_WIRELESS_SECURITY_KEY_MGMT,
                  "wpa-psk",
@@ -178,8 +181,8 @@ void modify_wifi2(NMClient *client, GMainLoop *loop)
                  "adlinkros",
                  NULL);
     nm_connection_add_setting(new_connection, NM_SETTING(s_secure));
-    nm_connection_replace_settings_from_connection (NM_CONNECTION (rem_con),
-                                                    new_connection);
+    nm_connection_replace_settings_from_connection(NM_CONNECTION(rem_con),
+                                                   new_connection);
     nm_remote_connection_commit_changes_async(rem_con,
                                               !temporary,
                                               NULL,
@@ -193,18 +196,18 @@ void modify_wifi(NMClient *client, GMainLoop *loop)
     NMRemoteConnection *rem_con = NULL;
     NMConnection *connection = NULL;
     gboolean temporary = FALSE;
-    const char *   uuid;
-    const char *   password;
+    const char *uuid;
+    const char *password;
 
     rem_con = nm_client_get_connection_by_id(client, "RMTClient");
-    GString* ssid = g_string_new("RMTtest");
-    uuid = nm_setting_connection_get_uuid(nm_connection_get_setting_connection(NM_CONNECTION (rem_con)));
+    GString *ssid = g_string_new("RMTtest");
+    uuid = nm_setting_connection_get_uuid(nm_connection_get_setting_connection(NM_CONNECTION(rem_con)));
     password = "adlinktest";
 
     connection = get_client_nmconnection("RMTClient", uuid, ssid, password);
 
-    nm_connection_replace_settings_from_connection (NM_CONNECTION (rem_con),
-                                                    connection);
+    nm_connection_replace_settings_from_connection(NM_CONNECTION(rem_con),
+                                                   connection);
     nm_remote_connection_commit_changes_async(rem_con,
                                               !temporary,
                                               NULL,
@@ -218,24 +221,24 @@ void modify_current_wifi(NMClient *client, GMainLoop *loop)
     NMRemoteConnection *rem_con = NULL;
     NMConnection *connection = NULL;
     gboolean temporary = FALSE;
-    const char *   uuid;
-    const char *   password;
+    const char *uuid;
+    const char *password;
     NMDevice *device;
     NMActiveConnection *active_con;
-    const char *   name;
+    const char *name;
 
     device = nm_client_get_device_by_iface(client, "wlx08beac0c85d9");
     active_con = nm_device_get_active_connection(device);
     rem_con = nm_active_connection_get_connection(active_con);
-    name = nm_connection_get_id(NM_CONNECTION (rem_con));
-    GString* ssid = g_string_new("RMTtest");
-    uuid = nm_setting_connection_get_uuid(nm_connection_get_setting_connection(NM_CONNECTION (rem_con)));
+    name = nm_connection_get_id(NM_CONNECTION(rem_con));
+    GString *ssid = g_string_new("RMTtest");
+    uuid = nm_setting_connection_get_uuid(nm_connection_get_setting_connection(NM_CONNECTION(rem_con)));
     password = "adlinktest";
 
     connection = get_client_nmconnection(name, uuid, ssid, password);
 
-    nm_connection_replace_settings_from_connection (NM_CONNECTION (rem_con),
-                                                    connection);
+    nm_connection_replace_settings_from_connection(NM_CONNECTION(rem_con),
+                                                   connection);
     nm_remote_connection_commit_changes_async(rem_con,
                                               !temporary,
                                               NULL,
@@ -250,47 +253,49 @@ typedef struct {
     const char *setting_name;
 } GetSecretsData;
 
-void got_secrets (GObject *source_object, GAsyncResult *res, gpointer user_data)
+void got_secrets(GObject *source_object, GAsyncResult *res, gpointer user_data)
 {
-    NMRemoteConnection *remote = NM_REMOTE_CONNECTION (source_object);
-    GetSecretsData *data = (GetSecretsData*)user_data;
+    NMRemoteConnection *remote = NM_REMOTE_CONNECTION(source_object);
+    GetSecretsData *data = (GetSecretsData *)user_data;
     GVariant *secrets;
     GError *error = NULL;
 
-    secrets = nm_remote_connection_get_secrets_finish (remote, res, NULL);
+    secrets = nm_remote_connection_get_secrets_finish(remote, res, NULL);
     if (secrets) {
-        if (!nm_connection_update_secrets (data->local, NULL, secrets, &error) && error) {
+        if (!nm_connection_update_secrets(data->local, NULL, secrets, &error) && error) {
             g_print("Error updating secrets for %s: %s\n",
                     data->setting_name, error->message);
-            g_clear_error (&error);
+            g_clear_error(&error);
         }
-        g_variant_unref (secrets);
+        g_variant_unref(secrets);
     }
 
-    g_main_loop_quit (data->loop);
+    g_main_loop_quit(data->loop);
 }
 
 void get_password(NMClient *client)
 {
     NMRemoteConnection *rem_con = NULL;
     NMConnection *new_connection;
-    NMSettingWirelessSecurity * s_secure;
-    const char *   password;
-    const char *   name;
-    GetSecretsData data = { 0, };
+    NMSettingWirelessSecurity *s_secure;
+    const char *password;
+    const char *name;
+    GetSecretsData data = {
+        0,
+    };
 
     rem_con = nm_client_get_connection_by_id(client, "RMTClient");
     new_connection = nm_simple_connection_new_clone(NM_CONNECTION(rem_con));
-    data.loop = g_main_loop_new (NULL, FALSE);
+    data.loop = g_main_loop_new(NULL, FALSE);
     data.local = new_connection;
     data.setting_name = "802-11-wireless-security";
 
-    nm_remote_connection_get_secrets_async (rem_con,
-                                            "802-11-wireless-security",
-                                            NULL,
-                                            got_secrets,
-                                            &data);
-    g_main_loop_run (data.loop);
+    nm_remote_connection_get_secrets_async(rem_con,
+                                           "802-11-wireless-security",
+                                           NULL,
+                                           got_secrets,
+                                           &data);
+    g_main_loop_run(data.loop);
 
     g_main_loop_unref(data.loop);
 
@@ -303,11 +308,11 @@ void get_active(NMClient *client)
 {
     NMDevice *device;
     NMActiveConnection *active_con;
-    NMSettingWireless  *s_wireless;
+    NMSettingWireless *s_wireless;
     NMConnection *new_connection;
-    GBytes *         active_ssid;
-    const char *   name;
-    const char *   ssid;
+    GBytes *active_ssid;
+    const char *name;
+    const char *ssid;
 
     device = nm_client_get_device_by_iface(client, "wlx08beac0c85d9");
     active_con = nm_device_get_active_connection(device);
@@ -315,23 +320,23 @@ void get_active(NMClient *client)
     name = nm_connection_get_id(new_connection);
     s_wireless = nm_connection_get_setting_wireless(new_connection);
     active_ssid = nm_setting_wireless_get_ssid(s_wireless);
-    ssid = nm_utils_ssid_to_utf8((guint8* )g_bytes_get_data(active_ssid, NULL),
+    ssid = nm_utils_ssid_to_utf8((guint8 *)g_bytes_get_data(active_ssid, NULL),
                                  g_bytes_get_size(active_ssid));
     g_print("%s\n", name);
     g_print("%s", ssid);
 }
 
-void update_ip4(NMClient *client, GMainLoop *loop, const char* method, bool gateway)
+void update_ip4(NMClient *client, GMainLoop *loop, const char *method, bool gateway)
 {
     NMRemoteConnection *rem_con = NULL;
     gboolean temporary = FALSE;
-    NMSettingIPConfig * s_ip4;
+    NMSettingIPConfig *s_ip4;
     NMConnection *new_connection;
     NMIPAddress *ip_address;
 
     rem_con = nm_client_get_connection_by_id(client, "RMTClient");
     new_connection = nm_simple_connection_new_clone(NM_CONNECTION(rem_con));
-    s_ip4 = (NMSettingIPConfig *) nm_setting_ip4_config_new();
+    s_ip4 = (NMSettingIPConfig *)nm_setting_ip4_config_new();
 
     nm_connection_remove_setting(new_connection, NM_TYPE_SETTING_IP4_CONFIG);
 
@@ -357,7 +362,7 @@ void update_ip4(NMClient *client, GMainLoop *loop, const char* method, bool gate
         nm_ip_address_unref(ip_address);
     } else {
         g_print("IP setting method not found");
-        g_main_loop_quit((GMainLoop*)loop);
+        g_main_loop_quit((GMainLoop *)loop);
 
         return;
     }
@@ -371,8 +376,8 @@ void update_ip4(NMClient *client, GMainLoop *loop, const char* method, bool gate
         return;
     }
 
-    nm_connection_replace_settings_from_connection (NM_CONNECTION (rem_con),
-                                                    new_connection);
+    nm_connection_replace_settings_from_connection(NM_CONNECTION(rem_con),
+                                                   new_connection);
     nm_remote_connection_commit_changes_async(rem_con,
                                               !temporary,
                                               NULL,
@@ -383,9 +388,9 @@ void update_ip4(NMClient *client, GMainLoop *loop, const char* method, bool gate
 
 int main(int argc, char *argv[])
 {
-    NMClient * client;
+    NMClient *client;
     GMainLoop *loop;
-    GError *   error = NULL;
+    GError *error = NULL;
 
     loop = g_main_loop_new(NULL, FALSE);
 
