@@ -386,6 +386,129 @@ void update_ip4(NMClient *client, GMainLoop *loop, const char *method, bool gate
     g_object_unref(new_connection);
 }
 
+void get_ip_address(NMClient *client)
+{
+    GError *error = NULL;
+    NMRemoteConnection *rem_con = NULL;
+    NMSettingIPConfig *s_ip4;
+    NMConnection *new_connection;
+    NMIPAddress *ip_address;
+    const char *address;
+    const char *gateway;
+    const char *method;
+    int prefix;
+
+    rem_con = nm_client_get_connection_by_id(client, "RMTClient");
+    new_connection = nm_simple_connection_new_clone(NM_CONNECTION(rem_con));
+    s_ip4 = nm_connection_get_setting_ip4_config(new_connection);
+    method = nm_setting_ip_config_get_method(s_ip4);
+
+    if (!strcmp(method, "manual")) {
+        ip_address = nm_setting_ip_config_get_address(s_ip4, 0);
+        prefix = nm_ip_address_get_prefix(ip_address);
+        address = nm_ip_address_get_address(ip_address);
+        gateway = nm_setting_ip_config_get_gateway(s_ip4);
+        std::cout << method << std::endl;
+        std::cout << address << std::endl;
+    }
+}
+
+void request_scan_cb(GObject *     device,
+                     GAsyncResult *result,
+                     gpointer      user_data)
+{
+    const GPtrArray *connections;
+    NMConnection *new_connection;
+    NMDeviceWifi *wifi = (NMDeviceWifi*)device;
+    GError *error = NULL;
+    const char *name;
+
+    nm_device_wifi_request_scan_finish(wifi, result, &error);
+    g_print("%ld", nm_device_wifi_get_last_scan(wifi));
+    g_print("%s\n", error->message);
+    g_clear_error(&error);
+    connections = nm_device_get_available_connections(NM_DEVICE(wifi));
+    for (int i = 0; i < connections->len; i++) {
+        new_connection = nm_simple_connection_new_clone(NM_CONNECTION(connections->pdata[i]));
+        name = nm_connection_get_id(new_connection);
+        g_print("%s\n", name);
+    }
+    g_main_loop_quit((GMainLoop *)user_data);
+}
+
+void reapply_cb(GObject *     device,
+                GAsyncResult *result,
+                gpointer      user_data)
+{
+    NMDevice *wifi = NM_DEVICE(device);
+    GError *error = NULL;
+
+    nm_device_reapply_finish(wifi, result, &error);
+    if (error) {
+        g_print("Error reapply connection: %s", error->message);
+        g_error_free(error);
+    } else {
+        g_print(("Connection successfully reapplied.\n"));
+    }
+
+    g_main_loop_quit((GMainLoop *)user_data);
+}
+
+void connection_reapply(NMClient *client, GMainLoop *loop)
+{
+    const char *name;
+    NMDevice *device;
+    NMConnection *new_connection;
+    NMActiveConnection *active_con;
+
+    device = nm_client_get_device_by_iface(client, "wlp1s0");
+    active_con = nm_device_get_active_connection(device);
+    if (active_con) {
+        new_connection = nm_simple_connection_new_clone(NM_CONNECTION(nm_active_connection_get_connection(active_con)));
+        name = nm_connection_get_id(new_connection);
+        if (!strcmp(name, "RMTHost")) {
+            nm_device_reapply_async(device, new_connection, 0, 0, NULL, reapply_cb, loop);
+        }
+    }
+}
+
+void get_device_type(NMClient *client, GMainLoop *loop)
+{
+    NMActiveConnection *active_con;
+    NMDevice *device;
+    const GPtrArray *devices;
+    const char *name, *con_id, *type;
+
+    devices = nm_client_get_devices(client);
+
+    for (int i = 0; i < devices->len; i++) {
+        device = (NMDevice *)devices->pdata[i];
+        active_con = nm_device_get_active_connection(device);
+        name = nm_device_get_iface(device);
+
+        switch (nm_device_get_device_type(device)) {
+            case NM_DEVICE_TYPE_ETHERNET:
+                type = "ethernet";
+                break;
+
+            case NM_DEVICE_TYPE_WIFI:
+                type = "wifi";
+                break;
+            default:
+                continue;
+        }
+        g_print("%s %s\n", name, type);
+    }
+}
+
+void current_connect_scan(NMClient *client, GMainLoop *loop)
+{
+    NMDevice *device;
+
+    device = nm_client_get_device_by_iface(client, "wlp1s0");
+    nm_device_wifi_request_scan_async(NM_DEVICE_WIFI(device), NULL, request_scan_cb, loop);
+}
+
 int main(int argc, char *argv[])
 {
     NMClient *client;
